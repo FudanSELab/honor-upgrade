@@ -117,7 +117,7 @@ def cpp2java_scan(repo_path: str, file_list: list[str], java_project: JavaProjec
     calling_list_all = cpp2java_java_loc(calling_list_all, java_project)
     return calling_list_all
 
-def main(repo_path: str, compdb: str, threads: int | None, overwrite: bool = False):
+def main(repo_path: str, threads: int | None, overwrite: bool = False):
     logging.info(f"Repo path: {repo_path}")
 
     logging.info(f"Loading Java Source Code")
@@ -255,8 +255,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--repo", dest="repo", help="path to repo", type=str,
                         default="/home/wrs/aosp")
-    parser.add_argument("-c", "--compdb", dest="compdb", help="compile_commands.json path", type=str,
-                        default="/home/wrs/aosp")
     parser.add_argument("-j", "--threads", dest="threads", help="threads", type=int, default=None)
     parser.add_argument("--overwrite", dest="overwrite", help="overwrite", default=False)
     parser.add_argument("--log-level", dest="loglevel", help="log level", type=int,
@@ -266,5 +264,5 @@ if __name__ == '__main__':
     if not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
     init_logger(logging.getLogger(), args.loglevel, f"{log_dir}/log.log")
-    main(args.repo, args.compdb, args.threads, args.overwrite)
+    main(args.repo, args.threads, args.overwrite)
     report(args.repo, log_dir)

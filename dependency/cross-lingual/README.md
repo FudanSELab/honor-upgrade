@@ -8,13 +8,13 @@
 ## 安装相关依赖
 
 ```bash
-pip install tqdm tree_sitter
+pip install tqdm tree_sitter tree-sitter-languages
 ```
 
 ## 使用
 
 ```bash
-python main.py -r <源代码目录> -c <compile_commands.json 路径>
+python main.py -r <源代码目录>
 ```
 
 ## 结果说明
