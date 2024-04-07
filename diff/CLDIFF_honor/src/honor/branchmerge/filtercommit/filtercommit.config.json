@@ -1,0 +1,38 @@
+{
+  "filter": {
+    "begin": {
+      "type": "tag",
+      "value": "android_12.0.0_r1"
+    },
+    "end": {
+      "type": "tag",
+      "value": "android_11.0.0_r1"
+    },
+
+    "only_test_update": {
+      "pattern": "(T|t)est|cts"
+    },
+    "non_existence_in_final": {
+    },
+    "only_project_unrelated_file_update": {
+      "binaryFileSuffix": [
+        ".bin", ".img", ".pdf", ".png", ".jpg", ".jpeg", ".gif"
+      ],
+      "textFileSuffix": [
+        ".txt", ".html", ".md", ".bp", ".mk", ".pem", ".xml"
+      ],
+      "unrelatedTextFile": [
+        "README", "LICENSE", "NOTICE", "Makefile", "OWNERS"
+      ]
+    },
+    "only_tool_update": {
+      "pattern": "tool"
+    },
+    "redundant_patch": {
+    },
+    "revert_patch": {
+    },
+    "only_javadoc_update": {
+    }
+  }
+}
