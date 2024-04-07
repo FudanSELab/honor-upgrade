@@ -1,0 +1,5 @@
+(executable
+ (public_name filter)
+ (name main)
+ (libraries filter core core_unix.command_unix yojson)
+ (preprocess (pps ppx_jane)))

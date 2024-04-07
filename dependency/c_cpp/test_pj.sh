@@ -1,0 +1,2 @@
+./infer/bin/infer capture --debug --compilation-database ./dependency-test/projects/jack-compiler/build/compile_commands.json 
+./infer/bin/infer analyze --debug -test_dependency --dependency-analysis-only 

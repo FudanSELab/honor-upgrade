@@ -1,0 +1,78 @@
+type language = [
+  | C_CXX     <json name="c/c++">
+  | Java      <json name="java">
+] <ocaml repr="classic">
+
+type func_type = {
+  (* FIXME: should be type_kind *)
+  args_type: string list;
+  return_type: string;
+  ?class_name: string option;
+}
+
+type location = {
+  source_file: string;
+  line: int;
+  column: int;
+}
+
+type func = {
+  func_name: string;
+  func_type: func_type;
+  location: location;
+}
+
+type caller = {
+  language: language;
+  func: func;
+}
+
+type callee = {
+  language: language;
+  func: func;
+  call_site: location;
+}
+
+type calling = {
+  caller: caller;
+  callees: callee list;
+}
+
+type type_kind = [
+  | Class     <json name="class">
+  | Struct    <json name="struct">
+  (* FIXME: use enum instead of primitive type for now *)
+  | Enum      <json name="enum">
+  | Union     <json name="union">
+  (* FIXME: should add primitive type *)
+] <ocaml repr="classic">
+
+type type_name = {
+  kind: type_kind;
+  name: string;
+}
+
+type inheritance = {
+  language: language;
+  type_name: type_name;
+  supers: type_name list;
+  location: location;
+}
+
+type refering_obj = [
+  | Type <json name="type"> of type_name
+  | Func <json name="func"> of func    
+] <ocaml repr="classic">
+
+type reference = {
+  language: language;
+  refering_obj: refering_obj;
+  refered_type: type_name;
+  location: location;
+}
+
+type dependency = {
+  calling: calling list;
+  inheritance: inheritance list;
+  reference: reference list;
+}
