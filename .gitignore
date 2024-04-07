@@ -4,3 +4,4 @@ dependency/cross-lingual/log/*
 dependency/cross-lingual/*.pkl
 dependency/cross-lingual/matched_files.txt
 dependency/cross-lingual/results/*
+.DS_Store
