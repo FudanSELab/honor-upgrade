@@ -254,7 +254,7 @@ def report(repo_path: str, logdir: str):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--repo", dest="repo", help="path to repo", type=str,
-                        default="/Users/sunbk201/Desktop/honor/honor/vendor/honor/system/base/frameworks/base")
+                        default="/home/wrs/aosp")
     parser.add_argument("-c", "--compdb", dest="compdb", help="compile_commands.json path", type=str,
                         default="/home/wrs/aosp")
     parser.add_argument("-j", "--threads", dest="threads", help="threads", type=int, default=None)
