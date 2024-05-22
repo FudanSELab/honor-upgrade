@@ -258,11 +258,11 @@ if __name__ == '__main__':
     parser.add_argument("-j", "--threads", dest="threads", help="threads", type=int, default=None)
     parser.add_argument("--overwrite", dest="overwrite", help="overwrite", default=False)
     parser.add_argument("--log-level", dest="loglevel", help="log level", type=int,
-                        default=logging.DEBUG)
+                        default=logging.INFO)
     args = parser.parse_args()
     log_dir = "log"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
     init_logger(logging.getLogger(), args.loglevel, f"{log_dir}/log.log")
     main(args.repo, args.threads, args.overwrite)
-    report(args.repo, log_dir)
+    # report(args.repo, log_dir)
