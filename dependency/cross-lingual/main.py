@@ -258,7 +258,7 @@ if __name__ == '__main__':
     parser.add_argument("-j", "--threads", dest="threads", help="threads", type=int, default=None)
     parser.add_argument("--overwrite", dest="overwrite", help="overwrite", default=False)
     parser.add_argument("--log-level", dest="loglevel", help="log level", type=int,
-                        default=logging.INFO)
+                        default=logging.DEBUG)
     args = parser.parse_args()
     log_dir = "log"
     if not os.path.exists(log_dir):
