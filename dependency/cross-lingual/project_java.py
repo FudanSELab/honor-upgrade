@@ -29,6 +29,7 @@ def parser_file(project_path: str, jf: str):
         return None
     except FileNotFoundError:
         return None
+    jf = jf.replace(project_path, "").strip("/")
     return File(jf, content)
 
 
@@ -60,7 +61,7 @@ class JavaProject:
                     file_ob_list.append(file_ob)
         for file in file_ob_list:
             self.files.append(file)
-            self.files_list.add(file.path.replace(self.project_path, ""))
+            self.files_list.add(file.path.replace(self.project_path, "").strip("/"))
             self.classes_list.update([clazz.fullname for clazz in file.classes])
             self.methods_list.update([method.signature for clazz in file.classes for method in clazz.methods])
             self.methods_list_no_param.update([method.signature.split("(")[0]

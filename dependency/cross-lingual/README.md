@@ -3,7 +3,7 @@
 ## 系统要求
 
 - Linux
-- Python 3.10 (or later)
+- Python 3.11.8 (or later)
 
 ## 安装相关依赖
 
