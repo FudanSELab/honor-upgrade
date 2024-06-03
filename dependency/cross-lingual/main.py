@@ -160,7 +160,7 @@ def main(repo_path: str, threads: int | None, overwrite: bool = False):
     if os.path.exists('java_project.pkl') and not overwrite:
         java_project: JavaProject = pickle.load(open("java_project.pkl", "rb"))
     else:
-        java_project = JavaProject(repo_path)
+        java_project = JavaProject(repo_path, threads)
         with open("java_project.pkl", "wb") as f:
             pickle.dump(java_project, f)
 
@@ -292,7 +292,7 @@ if __name__ == '__main__':
     parser.add_argument("-r", "--repo", dest="repo", help="path to repo", type=str,
                         default="")
     parser.add_argument("-j", "--threads", dest="threads", help="threads", type=int, default=None)
-    parser.add_argument("--overwrite", dest="overwrite", help="overwrite", type=bool, default=False)
+    parser.add_argument("--overwrite", dest="overwrite", help="overwrite", type=bool, default=True)
     parser.add_argument("--log-level", dest="loglevel", help="log level", type=int,
                         default=logging.DEBUG)
     args = parser.parse_args()
@@ -301,3 +301,4 @@ if __name__ == '__main__':
         os.makedirs(log_dir, exist_ok=True)
     init_logger(logging.getLogger(), args.loglevel, f"{log_dir}/log.log")
     main(args.repo, args.threads, args.overwrite)
+    # report(args.repo, log_dir)

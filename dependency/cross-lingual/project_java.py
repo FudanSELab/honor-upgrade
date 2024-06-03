@@ -3,14 +3,37 @@ import logging
 import os
 import pickle
 import ast_parser
+import concurrent.futures
 from tqdm import tqdm
 from util import UNKNOWN
 from tree_sitter import Node
 from ast_parser import ASTParser
 
 
+def scan_java_files(project_path: str):
+    all_java_files = []
+    for root, dirs, files in os.walk(project_path):
+        for file in files:
+            if file.endswith(".java"):
+                path = os.path.join(root, file)
+                # path = path.replace(project_path, "").strip("/")
+                all_java_files.append(path)
+    return all_java_files
+
+
+def parser_file(project_path: str, jf: str):
+    try:
+        with open(os.path.join(project_path, jf), "r") as f:
+            content = f.read()
+    except UnicodeDecodeError:
+        return None
+    except FileNotFoundError:
+        return None
+    return File(jf, content)
+
+
 class JavaProject:
-    def __init__(self, project_path: str):
+    def __init__(self, project_path: str, threads: int = 8):
         self.project_path = project_path
         self.files: list[File] = []
 
@@ -19,23 +42,23 @@ class JavaProject:
         self.methods_list: set[str] = set()
         self.methods_list_no_param: set[str] = set()
 
+        logging.info(f"Scanning java files ...")
         all_java_files = []
-        for root, dirs, files in os.walk(project_path):
-            for file in files:
-                if file.endswith(".java"):
-                    path = os.path.join(root, file)
-                    path = path.replace(project_path, "").strip("/")
-                    all_java_files.append(path)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+            results = [executor.submit(scan_java_files, os.path.join(project_path, path))
+                       for path in os.listdir(project_path)]
+            for f in tqdm(concurrent.futures.as_completed(results), desc="Scanning java files", total=len(results), bar_format="{l_bar}{bar}| [{percentage:.0f}%]"):
+                all_java_files.extend(f.result())
         logging.info(f"Total {len(all_java_files)} java files found")
 
-        for jf in tqdm(all_java_files, desc="Parsing Code files"):
-            with open(os.path.join(project_path, jf), "r") as f:
-                try:
-                    content = f.read()
-                except UnicodeDecodeError:
-                    logging.debug(f"UnicodeDecodeError: {jf}")
-                    continue
-            file = File(jf, content)
+        file_ob_list: list[File] = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
+            results = [executor.submit(parser_file, project_path, jf) for jf in tqdm(all_java_files)]
+            for f in tqdm(concurrent.futures.as_completed(results), desc="Parsing Code files", total=len(results)):
+                file_ob = f.result()
+                if file_ob is not None:
+                    file_ob_list.append(file_ob)
+        for file in file_ob_list:
             self.files.append(file)
             self.files_list.add(file.path.replace(self.project_path, ""))
             self.classes_list.update([clazz.fullname for clazz in file.classes])
