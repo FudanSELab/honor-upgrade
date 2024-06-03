@@ -13,6 +13,8 @@ import concurrent.futures
 from tqdm import tqdm
 from dependency import Calling, Location
 from project_java import JavaProject, File, Class, Method
+from util import UNKNOWN
+
 
 def init_logger(logger: logging.Logger, log_level: int, log_file_path: str):
     logger.setLevel(log_level)
@@ -29,6 +31,7 @@ def init_logger(logger: logging.Logger, log_level: int, log_file_path: str):
 
     logger.addHandler(ch)
     logger.addHandler(fh)
+
 
 def java2cpp_scan_process(file_path: str, repo_path: str) -> None | list[Calling]:
     calling_list_all: list[Calling] = []
@@ -49,32 +52,62 @@ def java2cpp_scan_process(file_path: str, repo_path: str) -> None | list[Calling
         # calling_list_all.extend(java2cpp.RegisterNativeMethods(file, func))
     return calling_list_all
 
-def java2cpp_java_loc(calling_list_all: list[Calling], java_project: JavaProject) -> list[Calling]:
-    for call in calling_list_all:
-        caller_java = call.caller
-        method_name = caller_java.func_name
-        class_name = caller_java.func_type.class_name
-        type_len = len(caller_java.func_type.args_type)
-        method_java = java_project.search_method(class_name, method_name, type_len)
-        if method_java is not None:
-            location_java = Location(method_java.file.path, method_java.start_line, 0)
-            caller_java.location = location_java
-            call.callees[0].call_site = location_java
-    return calling_list_all
+
+def java2cpp_java_loc_process(calling: Calling, java_project: JavaProject) -> Calling:
+    caller_java = calling.caller
+    method_name = caller_java.func_name
+    class_name = caller_java.func_type.class_name
+    type_len = len(caller_java.func_type.args_type)
+    method_java = java_project.search_method(class_name, method_name, type_len)
+    if method_java is not None:
+        location_java = Location(method_java.file.path, method_java.start_line, 0)
+        caller_java.location = location_java
+        calling.callees[0].call_site = location_java
+    return calling
+
+
+def java2cpp_java_loc(calling_list_all: list[Calling], java_project: JavaProject, threads: int | None) -> list[Calling]:
+    calling_list: list[Calling] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+        results = [executor.submit(java2cpp_java_loc_process, calling, java_project) for calling in calling_list_all]
+        for result in tqdm(concurrent.futures.as_completed(results), desc="Java Method Location", total=len(results)):
+            calling = result.result()
+            calling_list.append(calling)
+    return calling_list
+
 
 def cpp2java_java_loc(calling_list_all: list[Calling], java_project: JavaProject) -> list[Calling]:
+    result_list: list[Calling] = []
     for call in calling_list_all:
         callees = call.callees
+        valid = True
+        result_callees = []
         for callee in callees:
             callee_java = callee.called_func
             method_name = callee_java.func_name
-            class_name = callee_java.func_type.class_name
             type_len = len(callee_java.func_type.args_type)
+            if callee_java.func_type.class_name == UNKNOWN:
+                result = java_project.search_class_by_method(
+                    method_name, type_len)
+                if result is None:
+                    logging.debug(
+                        f"[{call.caller.location.source_file}] clazz_string is UNKNOWN, caller: {call.caller.func_name}, callee: {callee_java.func_name}")
+                    valid = False
+                    continue
+                else:
+                    callee_java.func_type.class_name = result
+            class_name = callee_java.func_type.class_name
             method_java = java_project.search_method(class_name, method_name, type_len)
             if method_java is not None:
                 location_java = Location(method_java.file.path, method_java.start_line, 0)
                 callee_java.location = location_java
-    return calling_list_all
+            if valid:
+                result_callees.append(callee)
+        if len(result_callees) > 0:
+            call.callees = result_callees
+            result_list.append(call)
+    return result_list
+
 
 def java2cpp_scan(repo_path: str, file_list: list[str], java_project: JavaProject, threads: int | None) -> list[Calling]:
     calling_list_all: list[Calling] = []
@@ -85,8 +118,9 @@ def java2cpp_scan(repo_path: str, file_list: list[str], java_project: JavaProjec
             if calling_list is not None:
                 calling_list_all.extend(calling_list)
     logging.info(f"calling list java2cpp len: {len(calling_list_all)}")
-    calling_list_all = java2cpp_java_loc(calling_list_all, java_project)
+    calling_list_all = java2cpp_java_loc(calling_list_all, java_project, threads)
     return calling_list_all
+
 
 def cpp2java_scan_process(file_path: str, repo_path: str, func_class_pair: dict[str, str]) -> list[Calling] | None:
     calling_list: list[Calling] = []
@@ -104,6 +138,7 @@ def cpp2java_scan_process(file_path: str, repo_path: str, func_class_pair: dict[
         calling_list.append(calling)
     return calling_list
 
+
 def cpp2java_scan(repo_path: str, file_list: list[str], java_project: JavaProject, func_class_pair: dict[str, str], threads: int | None) -> list[Calling]:
     calling_list_all: list[Calling] = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=threads, mp_context=multiprocessing.get_context("fork")) as executor:
@@ -116,6 +151,7 @@ def cpp2java_scan(repo_path: str, file_list: list[str], java_project: JavaProjec
     logging.info(f"calling list cpp2java len: {len(calling_list_all)}")
     calling_list_all = cpp2java_java_loc(calling_list_all, java_project)
     return calling_list_all
+
 
 def main(repo_path: str, threads: int | None, overwrite: bool = False):
     logging.info(f"Repo path: {repo_path}")
@@ -254,9 +290,9 @@ def report(repo_path: str, logdir: str):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--repo", dest="repo", help="path to repo", type=str,
-                        default="/home/wrs/aosp")
+                        default="")
     parser.add_argument("-j", "--threads", dest="threads", help="threads", type=int, default=None)
-    parser.add_argument("--overwrite", dest="overwrite", help="overwrite", default=False)
+    parser.add_argument("--overwrite", dest="overwrite", help="overwrite", type=bool, default=False)
     parser.add_argument("--log-level", dest="loglevel", help="log level", type=int,
                         default=logging.DEBUG)
     args = parser.parse_args()
@@ -265,4 +301,3 @@ if __name__ == '__main__':
         os.makedirs(log_dir, exist_ok=True)
     init_logger(logging.getLogger(), args.loglevel, f"{log_dir}/log.log")
     main(args.repo, args.threads, args.overwrite)
-    # report(args.repo, log_dir)

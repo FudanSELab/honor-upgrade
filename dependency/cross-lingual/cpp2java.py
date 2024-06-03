@@ -6,6 +6,7 @@ from common import string_node_to_string
 from project_cpp import File, Function
 from dependency import Calling, Callee, Location, Func, Func_Type
 
+
 def getEnclosingFunction(node: Node, file: File) -> Function | None:
     cur_node = node
     while cur_node is not None:
@@ -14,6 +15,7 @@ def getEnclosingFunction(node: Node, file: File) -> Function | None:
         cur_node = cur_node.parent
     return None
 
+
 def getCaller(file: File, callee_name: str) -> Function | None:
     captures = file.search_function_call(callee_name)
     if captures is None:
@@ -21,6 +23,7 @@ def getCaller(file: File, callee_name: str) -> Function | None:
     for c in captures:
         if c[1] == "call":
             return getEnclosingFunction(c[0], file)
+
 
 def search_identifier_string(file: File, func: Function, identifier: str):
     # static const char *outClassPathName = "com/android/gallery3d/jpegstream/JPEGOutputStream";
@@ -74,6 +77,7 @@ def search_identifier_string(file: File, func: Function, identifier: str):
     logging.debug(f"[{file.path}] search_identifier_string fail: {identifier}")
     return UNKNOWN
 
+
 def search_identifier_ScopedLocalRef(file: File, func: Function, identifier: str) -> str:
     # ScopedLocalRef<jclass> clazz(env, env->FindClass("java/nio/ByteBuffer"));
     query = f'''
@@ -99,6 +103,7 @@ def search_identifier_ScopedLocalRef(file: File, func: Function, identifier: str
             continue
         return r[0].text.decode()
     return UNKNOWN
+
 
 def search_identifier_NewGlobalRef(file: File, func: Function, identifier: str) -> str:
     # class_gnssMeasurementsEventBuilder = (jclass)env->NewGlobalRef(gnssMeasurementsEventBuilderClass);
@@ -145,6 +150,7 @@ def search_identifier_NewGlobalRef(file: File, func: Function, identifier: str) 
             return UNKNOWN
     logging.debug(f"[{file.path}] search_identifier_NewGlobalRef fail: {identifier}")
     return UNKNOWN
+
 
 def search_identifier_MakeGlobalRefOrDie(file: File, func: Function, identifier: str) -> str:
     # gAppFuseClass = MakeGlobalRefOrDie(env, FindClassOrDie(env, CLASS_NAME));
@@ -195,6 +201,7 @@ def search_identifier_MakeGlobalRefOrDie(file: File, func: Function, identifier:
     logging.debug(f"[{file.path}] search_identifier_MakeGlobalRefOrDie fail: {identifier}")
     return UNKNOWN
 
+
 def search_identifier_FindClassOrDie(file: File, func: Function, identifier: str) -> str:
     # jclass listenerClass = FindClassOrDie(env, listenerClassName);
     query = f'''
@@ -227,6 +234,7 @@ def search_identifier_FindClassOrDie(file: File, func: Function, identifier: str
     logging.debug(f"[{file.path}] search_identifier_FindClassOrDie fail: {identifier}")
     return UNKNOWN
 
+
 def search_identifier_FIND_CLASS(file: File, func: Function, identifier: str) -> str:
     query = f"""
     (call_expression
@@ -258,6 +266,7 @@ def search_identifier_FIND_CLASS(file: File, func: Function, identifier: str) ->
         return r[0].text.decode()
     logging.debug(f"[{file.path}] search_identifier_FIND_CLASS fail: {identifier}")
     return UNKNOWN
+
 
 def search_identifier_FindClass(file: File, func: Function, identifier: str) -> str:
     # jclass clazz = env->FindClass("android/drm/DrmManagerClient");
@@ -299,6 +308,7 @@ def search_identifier_FindClass(file: File, func: Function, identifier: str) -> 
     logging.debug(f"[{file.path}] search_identifier_FindClass fail: {identifier}")
     return UNKNOWN
 
+
 def gen_cpp2java_callee(cpp_func: Function, cpp_file: File, call_node: Node, java_clazz: str, java_method_name: str, java_method_sig: str) -> Callee:
     type_java = util.convert_jni_signature(java_method_sig)
     if type_java == "()":
@@ -313,6 +323,7 @@ def gen_cpp2java_callee(cpp_func: Function, cpp_file: File, call_node: Node, jav
     location_call = Location(cpp_file.path, call_start_line, call_node.start_point[1] + 1)
     callees = Callee(callee_java, location_call)
     return callees
+
 
 def search_getmethod_call(func: Function, identifier: str, call_node: Node, func_class_pair: dict[str, str]):
     file = func.file
@@ -480,6 +491,7 @@ def search_getmethod_call(func: Function, identifier: str, call_node: Node, func
         x.start_point[0] - call_node.start_point[0]) if x.start_point[0] <= call_node.start_point[0] else 1000000)
     return args_nodes
 
+
 def parse_GetMethodID_args(func: Function, args_node: Node, call_node: Node, func_class_pair: dict[str, str]):
     file = func.file
     enclosingFunction = getEnclosingFunction(args_node, file)
@@ -578,6 +590,7 @@ def parse_GetMethodID_args(func: Function, args_node: Node, call_node: Node, fun
         return
     return gen_cpp2java_callee(func, file, call_node, clazz_string, method_name, signature)
 
+
 def search_class_name(func: Function, enclosingFunction: Function, class_node: Node, func_class_pair: dict[str, str]):
     file = func.file
     class_string = UNKNOWN
@@ -629,12 +642,12 @@ def search_class_name(func: Function, enclosingFunction: Function, class_node: N
                 else:
                     class_string = UNKNOWN
     if class_string == UNKNOWN:
-        logging.debug(
-            f"[{file.path}] clazz_string is UNKNOWN, enclosingFunction: {enclosingFunction.name}")
+        # logging.debug(f"[{file.path}] clazz_string is UNKNOWN, enclosingFunction: {enclosingFunction.name}")
         return
     if " " in class_string:
         class_string = class_string.split(" ")[1].strip("/")
     return class_string
+
 
 def search_method_name(func: Function, enclosingFunction: Function, method_name: str | Node):
     file = func.file
@@ -649,6 +662,7 @@ def search_method_name(func: Function, enclosingFunction: Function, method_name:
             f"[{file.path}] method_name type is {method_name.type}, function: {enclosingFunction.name}")
         return
 
+
 def search_method_signature(func: Function, enclosingFunction: Function, signature: Node):
     file = func.file
     if signature.type == "string_literal" or signature.type == "concatenated_string":
@@ -659,6 +673,7 @@ def search_method_signature(func: Function, enclosingFunction: Function, signatu
         logging.debug(
             f"[{file.path}] method signature type is {signature.type}, function: {enclosingFunction.name}")
         return
+
 
 def search_callmethod(func: Function):
     query = """
@@ -677,6 +692,7 @@ def search_callmethod(func: Function):
     callid_nodes = [c[0] for c in call if c[1] == "id"]
     args_nodes: list[Node] = [c[0] for c in call if c[1] == "args"]
     return call_nodes, callid_nodes, args_nodes
+
 
 def handle_callmethod(func: Function, args_node: Node, func_class_pair: dict[str, str]):
     file = func.file
@@ -705,7 +721,7 @@ def handle_callmethod(func: Function, args_node: Node, func_class_pair: dict[str
     # get class name
     class_string = search_class_name(func, enclosingFunction, clazz, func_class_pair)
     if class_string is None or class_string == UNKNOWN:
-        return
+        class_string = UNKNOWN
 
     # get method name
     method_name = search_method_name(func, enclosingFunction, method_name)
@@ -718,6 +734,7 @@ def handle_callmethod(func: Function, args_node: Node, func_class_pair: dict[str
         return
 
     return class_string, method_name, signature
+
 
 def cpp2java(func: Function, func_class_pair: dict[str, str]) -> Calling | None:
     file = func.file

@@ -1,11 +1,10 @@
 import logging
 import platform
 from util import UNKNOWN
+import tree_sitter_cpp as tscpp
+import tree_sitter_java as tsjava
 from tree_sitter import Language, Parser, Node
-from tree_sitter_languages import get_language, get_parser
 
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
 TS_QUERY_PACKAGE = "(package_declaration (scoped_identifier) @package)(package_declaration (identifier) @package)"
 TS_IMPORT = "(import_declaration (scoped_identifier) @import)"
@@ -27,20 +26,14 @@ CPP_INCLUDE = '''
 )
 '''
 
+
 class ASTParser:
     def __init__(self, code: str | bytes, language: str):
-        # if platform.system() == "Darwin":
-        #     library_path = "lib/languages-macos.so"
-        # elif platform.system() == "Linux":
-        #     library_path = "lib/languages-linux.so"
-        # else:
-        #     logging.fatal(f"Not supported system: {platform.system()}")
-        #     return
-        # self.LANGUAGE = Language(library_path, language)
-        # self.parser = Parser()
-        # self.parser.set_language(self.LANGUAGE)
-        self.LANGUAGE = get_language(language)
-        self.parser = get_parser(language)
+        if language == "cpp":
+            self.LANGUAGE = Language(tscpp.language())
+        elif language == "java":
+            self.LANGUAGE = Language(tsjava.language())
+        self.parser = Parser(self.LANGUAGE)
         if isinstance(code, str):
             self.root = self.parser.parse(bytes(code, "utf-8")).root_node
         else:
@@ -77,8 +70,6 @@ class ASTParser:
         except Exception as e:
             return []
         return captures
-
-
 
 
 if __name__ == "__main__":

@@ -3,11 +3,11 @@ import logging
 import os
 import pickle
 import ast_parser
-import concurrent.futures
 from tqdm import tqdm
 from util import UNKNOWN
 from tree_sitter import Node
 from ast_parser import ASTParser
+
 
 class JavaProject:
     def __init__(self, project_path: str):
@@ -75,7 +75,7 @@ class JavaProject:
         return None
 
     def search_method(self, class_name: str, method_name: str, param_len: int):
-        class_name = class_name.replace("/", ".")
+        class_name = class_name.replace("/", ".") if "/" in class_name else class_name
         if "$" in class_name:
             pkg = class_name[:class_name.rfind(".")]
             name = class_name.split("$")[1]
@@ -92,6 +92,21 @@ class JavaProject:
                     break
         return None
 
+    def search_class_by_method(self, method_name: str, param_len: int):
+        potential_classes = []
+        for file in self.files:
+            for clazz in file.classes:
+                for method in clazz.methods:
+                    if method.name == method_name and method.param_len == param_len:
+                        potential_classes.append(clazz)
+        if len(potential_classes) == 1:
+            return potential_classes[0].fullname
+        elif len(potential_classes) > 1:
+            return None
+        else:
+            return None
+
+
 class File:
     def __init__(self, path: str, content: str):
         parser = ASTParser(content, "java")
@@ -103,6 +118,7 @@ class File:
         self.imports = [import_node[0].text.decode() for import_node in parser.query(ast_parser.TS_IMPORT)]
         self.classes = [Class(class_node[0], self, parser) for class_node in parser.query(ast_parser.TS_CLASS)]
         self.methods = [method for clazz in self.classes for method in clazz.methods]
+
 
 class Class:
     def __init__(self, node: Node, file: File, parser: ASTParser):
@@ -125,6 +141,7 @@ class Class:
             if cls_inf_name is None or cls_inf_name.text.decode() != self.name:
                 continue
             self.methods.append(Method(method_node[0], self, file))
+
 
 class Method:
     def __init__(self, node: Node, clazz: Class, file: File):
